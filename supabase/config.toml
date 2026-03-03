@@ -1,0 +1,4 @@
+project_id = "ipsgkdpqhcpwylujvydg"
+
+[functions.generate-sketch]
+verify_jwt = false
