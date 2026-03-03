@@ -1,12 +1,12 @@
 import { useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Download, RotateCcw, Sparkles } from "lucide-react";
+import { Download, RotateCcw, Sparkles, Pencil, Palette } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import UploadZone from "@/components/UploadZone";
 import BeforeAfterSlider from "@/components/BeforeAfterSlider";
 import SketchProgress from "@/components/SketchProgress";
-import { generateSketch } from "@/lib/api";
+import { generateSketch, type SketchMode } from "@/lib/api";
 
 type AppState = "idle" | "preview" | "generating" | "done";
 
@@ -14,6 +14,7 @@ const Index = () => {
   const [state, setState] = useState<AppState>("idle");
   const [original, setOriginal] = useState<string>("");
   const [sketch, setSketch] = useState<string>("");
+  const [mode, setMode] = useState<SketchMode>("graphite");
 
   const handleImageSelected = useCallback((base64: string) => {
     setOriginal(base64);
@@ -24,16 +25,20 @@ const Index = () => {
   const handleGenerate = useCallback(async () => {
     setState("generating");
     try {
-      const result = await generateSketch(original);
+      const result = await generateSketch(original, mode);
       setSketch(result.sketch);
       setState("done");
-      toast.success("Your graphite sketch is ready!");
+      toast.success(
+        mode === "colored"
+          ? "Your colored pencil sketch is ready!"
+          : "Your graphite sketch is ready!"
+      );
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Something went wrong. Please try again.");
       setState("preview");
     }
-  }, [original]);
+  }, [original, mode]);
 
   const handleReset = useCallback(() => {
     setOriginal("");
@@ -45,9 +50,9 @@ const Index = () => {
     if (!sketch) return;
     const link = document.createElement("a");
     link.href = sketch;
-    link.download = "graphite-sketch.png";
+    link.download = `${mode}-sketch.png`;
     link.click();
-  }, [sketch]);
+  }, [sketch, mode]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -93,7 +98,7 @@ const Index = () => {
                     Photo to <span className="text-gold-gradient">Pencil Sketch</span>
                   </h2>
                   <p className="text-muted-foreground max-w-md mx-auto">
-                    Transform any portrait into an ultra-realistic graphite pencil drawing powered by AI.
+                    Transform any photo into an ultra-realistic pencil drawing — graphite or colored pencil — powered by AI.
                   </p>
                 </div>
                 <UploadZone onImageSelected={handleImageSelected} />
@@ -115,13 +120,40 @@ const Index = () => {
                     className="w-full h-full object-cover"
                   />
                 </div>
+
+                {/* Mode selector */}
+                <div className="flex gap-2 p-1 rounded-xl bg-secondary">
+                  <button
+                    onClick={() => setMode("graphite")}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                      mode === "graphite"
+                        ? "bg-primary text-primary-foreground shadow-md"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Graphite
+                  </button>
+                  <button
+                    onClick={() => setMode("colored")}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                      mode === "colored"
+                        ? "bg-primary text-primary-foreground shadow-md"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Palette className="w-4 h-4" />
+                    Colored Pencil
+                  </button>
+                </div>
+
                 <Button
                   onClick={handleGenerate}
                   size="lg"
                   className="bg-primary text-primary-foreground hover:bg-gold-dark px-8 font-medium"
                 >
                   <Sparkles className="w-4 h-4 mr-2" />
-                  Generate Sketch
+                  Generate {mode === "colored" ? "Colored" : "Graphite"} Sketch
                 </Button>
               </motion.div>
             )}
@@ -133,7 +165,7 @@ const Index = () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <SketchProgress />
+                <SketchProgress mode={mode} />
               </motion.div>
             )}
 
@@ -146,7 +178,7 @@ const Index = () => {
                 className="flex flex-col items-center gap-6"
               >
                 <BeforeAfterSlider before={original} after={sketch} />
-                <div className="flex gap-3">
+                <div className="flex gap-3 flex-wrap justify-center">
                   <Button
                     onClick={handleDownload}
                     size="lg"
@@ -154,6 +186,18 @@ const Index = () => {
                   >
                     <Download className="w-4 h-4 mr-2" />
                     Download
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setSketch("");
+                      setState("preview");
+                    }}
+                    variant="outline"
+                    size="lg"
+                    className="border-border text-foreground hover:bg-surface-hover"
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Try Other Style
                   </Button>
                   <Button
                     onClick={handleReset}

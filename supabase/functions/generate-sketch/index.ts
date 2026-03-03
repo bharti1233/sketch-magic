@@ -6,7 +6,9 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SKETCH_PROMPT = `Transform this photograph into an ultra-realistic graphite pencil sketch on white textured paper. Apply masterful graphite shading with accurate facial structure and clean sharp contours. Create professional fine art drawing quality with subtle tonal gradients, extremely detailed eyes, and high contrast lighting. The result should look like an 8K detailed pencil portrait drawn by a master artist. No color - pure graphite pencil on white paper.`;
+const GRAPHITE_PROMPT = `Transform this entire image into an ultra-realistic graphite pencil sketch on white textured paper. Convert every element in the scene — people, objects, backgrounds, landscapes, architecture — into detailed pencil work. Apply masterful graphite shading with clean sharp contours and subtle tonal gradients. Create professional fine art drawing quality with high contrast lighting and 8K detail. The entire composition should look hand-drawn by a master pencil artist. No color whatsoever — pure graphite pencil on white paper.`;
+
+const COLORED_PENCIL_PROMPT = `Transform this entire image into a beautiful colored pencil sketch on white textured paper. Convert every element in the scene — people, objects, backgrounds, landscapes, architecture — into detailed colored pencil work. Use vibrant yet natural colored pencil strokes that follow the original colors of the image. Apply visible pencil texture with cross-hatching and layered strokes. Maintain sharp contours and professional fine art quality. The result should look like a masterful colored pencil drawing with rich, blended hues, subtle paper texture showing through, and 8K detail. Keep the artistic hand-drawn colored pencil aesthetic throughout.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -22,7 +24,7 @@ serve(async (req) => {
       );
     }
 
-    const { image } = await req.json();
+    const { image, mode } = await req.json();
 
     if (!image || typeof image !== "string") {
       return new Response(
@@ -31,7 +33,6 @@ serve(async (req) => {
       );
     }
 
-    // Validate image size (max ~10MB base64)
     if (image.length > 14_000_000) {
       return new Response(
         JSON.stringify({ error: "Image too large. Maximum size is 10MB." }),
@@ -39,7 +40,8 @@ serve(async (req) => {
       );
     }
 
-    console.log("Calling AI gateway for sketch generation...");
+    const prompt = mode === "colored" ? COLORED_PENCIL_PROMPT : GRAPHITE_PROMPT;
+    console.log(`Generating ${mode || "graphite"} sketch...`);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -53,11 +55,8 @@ serve(async (req) => {
           {
             role: "user",
             content: [
-              { type: "text", text: SKETCH_PROMPT },
-              {
-                type: "image_url",
-                image_url: { url: image },
-              },
+              { type: "text", text: prompt },
+              { type: "image_url", image_url: { url: image } },
             ],
           },
         ],
