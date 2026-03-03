@@ -1,15 +1,27 @@
 import { motion } from "framer-motion";
-import { Pencil } from "lucide-react";
+import { Pencil, Palette } from "lucide-react";
+import type { SketchMode } from "@/lib/api";
 
-const tips = [
-  "Analyzing facial structure…",
+const graphiteTips = [
+  "Analyzing composition…",
   "Mapping tonal gradients…",
   "Rendering graphite strokes…",
   "Refining fine details…",
   "Applying contrast and shading…",
 ];
 
-const SketchProgress = () => {
+const coloredTips = [
+  "Analyzing color palette…",
+  "Layering base pencil tones…",
+  "Blending colored strokes…",
+  "Adding cross-hatch texture…",
+  "Refining vibrancy and detail…",
+];
+
+const SketchProgress = ({ mode = "graphite" }: { mode?: SketchMode }) => {
+  const tips = mode === "colored" ? coloredTips : graphiteTips;
+  const Icon = mode === "colored" ? Palette : Pencil;
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -22,11 +34,13 @@ const SketchProgress = () => {
         transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
         className="w-16 h-16 rounded-full border-2 border-primary/30 border-t-primary flex items-center justify-center"
       >
-        <Pencil className="w-6 h-6 text-primary" />
+        <Icon className="w-6 h-6 text-primary" />
       </motion.div>
 
       <div className="text-center">
-        <h3 className="font-serif text-xl text-foreground mb-2">Creating Your Sketch</h3>
+        <h3 className="font-serif text-xl text-foreground mb-2">
+          {mode === "colored" ? "Creating Colored Sketch" : "Creating Your Sketch"}
+        </h3>
         <div className="h-6 overflow-hidden">
           <motion.div
             animate={{ y: [0, -24, -48, -72, -96, 0] }}
