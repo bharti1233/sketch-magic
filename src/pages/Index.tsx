@@ -6,19 +6,22 @@ import { Button } from "@/components/ui/button";
 import UploadZone from "@/components/UploadZone";
 import BeforeAfterSlider from "@/components/BeforeAfterSlider";
 import SketchProgress from "@/components/SketchProgress";
+import LiveDrawingCanvas from "@/components/LiveDrawingCanvas";
 import { generateSketch, type SketchMode } from "@/lib/api";
 
-type AppState = "idle" | "preview" | "generating" | "done";
+type AppState = "idle" | "preview" | "generating" | "drawing" | "done";
 
 const Index = () => {
   const [state, setState] = useState<AppState>("idle");
-  const [original, setOriginal] = useState<string>("");
-  const [sketch, setSketch] = useState<string>("");
+  const [original, setOriginal] = useState("");
+  const [sketch, setSketch] = useState("");
   const [mode, setMode] = useState<SketchMode>("graphite");
+  const [showSlider, setShowSlider] = useState(false);
 
   const handleImageSelected = useCallback((base64: string) => {
     setOriginal(base64);
     setSketch("");
+    setShowSlider(false);
     setState("preview");
   }, []);
 
@@ -27,12 +30,8 @@ const Index = () => {
     try {
       const result = await generateSketch(original, mode);
       setSketch(result.sketch);
-      setState("done");
-      toast.success(
-        mode === "colored"
-          ? "Your colored pencil sketch is ready!"
-          : "Your graphite sketch is ready!"
-      );
+      setState("drawing");
+      toast.success("Sketch generated — now watch it come to life!");
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Something went wrong. Please try again.");
@@ -40,9 +39,14 @@ const Index = () => {
     }
   }, [original, mode]);
 
+  const handleDrawingComplete = useCallback(() => {
+    setState("done");
+  }, []);
+
   const handleReset = useCallback(() => {
     setOriginal("");
     setSketch("");
+    setShowSlider(false);
     setState("idle");
   }, []);
 
@@ -86,6 +90,7 @@ const Index = () => {
       <main className="flex-1 flex flex-col items-center justify-center px-4 py-10">
         <div className="w-full max-w-lg">
           <AnimatePresence mode="wait">
+            {/* IDLE */}
             {state === "idle" && (
               <motion.div
                 key="idle"
@@ -105,6 +110,7 @@ const Index = () => {
               </motion.div>
             )}
 
+            {/* PREVIEW */}
             {state === "preview" && (
               <motion.div
                 key="preview"
@@ -150,7 +156,7 @@ const Index = () => {
                 <Button
                   onClick={handleGenerate}
                   size="lg"
-                  className="bg-primary text-primary-foreground hover:bg-gold-dark px-8 font-medium"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 font-medium"
                 >
                   <Sparkles className="w-4 h-4 mr-2" />
                   Generate {mode === "colored" ? "Colored" : "Graphite"} Sketch
@@ -158,6 +164,7 @@ const Index = () => {
               </motion.div>
             )}
 
+            {/* GENERATING (API call in progress) */}
             {state === "generating" && (
               <motion.div
                 key="generating"
@@ -169,6 +176,26 @@ const Index = () => {
               </motion.div>
             )}
 
+            {/* DRAWING (live canvas animation) */}
+            {state === "drawing" && (
+              <motion.div
+                key="drawing"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <LiveDrawingCanvas
+                  sketchSrc={sketch}
+                  originalSrc={original}
+                  onComplete={handleDrawingComplete}
+                  onDownload={handleDownload}
+                  onReset={handleReset}
+                  duration={90}
+                />
+              </motion.div>
+            )}
+
+            {/* DONE (before/after slider) */}
             {state === "done" && (
               <motion.div
                 key="done"
@@ -177,24 +204,40 @@ const Index = () => {
                 exit={{ opacity: 0 }}
                 className="flex flex-col items-center gap-6"
               >
-                <BeforeAfterSlider before={original} after={sketch} />
+                {showSlider ? (
+                  <BeforeAfterSlider before={original} after={sketch} />
+                ) : (
+                  <div className="w-full max-w-lg rounded-2xl overflow-hidden border border-border">
+                    <img src={sketch} alt="Final sketch" className="w-full h-auto" />
+                  </div>
+                )}
+
                 <div className="flex gap-3 flex-wrap justify-center">
                   <Button
                     onClick={handleDownload}
                     size="lg"
-                    className="bg-primary text-primary-foreground hover:bg-gold-dark px-6"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 px-6"
                   >
                     <Download className="w-4 h-4 mr-2" />
                     Download
                   </Button>
                   <Button
+                    onClick={() => setShowSlider((s) => !s)}
+                    variant="outline"
+                    size="lg"
+                    className="border-border text-foreground"
+                  >
+                    {showSlider ? "Hide" : "Compare"}
+                  </Button>
+                  <Button
                     onClick={() => {
                       setSketch("");
+                      setShowSlider(false);
                       setState("preview");
                     }}
                     variant="outline"
                     size="lg"
-                    className="border-border text-foreground hover:bg-surface-hover"
+                    className="border-border text-foreground"
                   >
                     <Sparkles className="w-4 h-4 mr-2" />
                     Try Other Style
@@ -203,7 +246,7 @@ const Index = () => {
                     onClick={handleReset}
                     variant="outline"
                     size="lg"
-                    className="border-border text-foreground hover:bg-surface-hover"
+                    className="border-border text-foreground"
                   >
                     <RotateCcw className="w-4 h-4 mr-2" />
                     New Photo
