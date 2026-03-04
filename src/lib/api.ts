@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
-
-export type SketchMode = "graphite" | "colored";
+import type { SketchMode } from "@/lib/shared-state";
+export type { SketchMode };
 
 export interface SketchResult {
   sketch: string;
